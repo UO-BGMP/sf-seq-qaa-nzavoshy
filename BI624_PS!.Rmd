@@ -1,0 +1,231 @@
+---
+title: "BI624_PS1: SF-Seq Quality Assessment Assignment"
+author: "Nicki Zavoshy"
+date: "9/27/2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+- I am working on these two files: 29_4E_fox and 32_4G_both
+- loaded easybuild intel/2017a FastQC
+- fastqc version : FastQC v0.11.5
+
+###Part 1
+
+
+1. finding the proper commands for fastqc
+
+```fastqc -o fastqc_out --noextract -f fastq -t 4 29_4E_fox_S21_L008_R1_001.fastq.gz  29_4E_fox_S21_L008_R2_001.fastq.gz  32_4G_both_S23_L008_R1_001.fastq.gz 32_4G_both_S23_L008_R2_001.fastq.gz```
+
+- Plots from FastQC
+
+![Library 29 Read 1 quality score distributions](29_4E_fox_S21_L008_R1_001_fastqc/Images/per_base_quality.png)
+
+
+![Library 29 Read 2 quality score distributions](29_4E_fox_S21_L008_R2_001_fastqc/Images/per_base_quality.png)
+
+
+
+![Library 32 Read 1 quality score distributions](32_4G_both_S23_L008_R1_001_fastqc/Images/per_base_quality.png)
+
+
+![Library 32 Read 2 quality score distributions](32_4G_both_S23_L008_R2_001_fastqc/Images/per_base_quality.png)
+
+
+
+![Library 29 Read 1 n content](29_4E_fox_S21_L008_R1_001_fastqc/Images/per_base_n_content.png)
+
+
+
+![Library 29 Read 2 n content](29_4E_fox_S21_L008_R1_001_fastqc/Images/per_base_n_content.png)
+
+
+
+![Library 32 Read 1 n content](32_4G_both_S23_L008_R1_001_fastqc/Images/per_base_n_content.png)
+
+
+![Library 32 Read 2 n content](32_4G_both_S23_L008_R2_001_fastqc/Images/per_base_n_content.png)
+
+- The n content of these reads are very close to zero, with a small spike at the beginning of the read. This is consistent with the per base quality scores, since the average quality score is lower at the beginning of the read and end of the read. This is due to sequencing being the best in the middle of the sequence and the beginning and end have lower quality. 
+
+
+
+2. Running my own program from the index swapping assignment
+
+
+- FastQC was an incredibly fast program and took about 2.5 minutes to execute the quality score distributions for all 4 of the files and to plot them. 
+
+- I submitted an sbatch script to run all of the files concurrently. It took about 20 minutes to execute the quality score distributions. But this still requires the creation of graphs in R, so therefore fastqc is much quicker. I believe this to possibly be because it is written in java and therefore allowed for threading, or just because I am still new to writing programs and wrote an inefficient method of doing this. 
+
+```{r, echo=FALSE}
+R1<- read.table('29_R1_b',sep = ',')
+R1<-t(R1)
+R2<- read.table('29_R2_b',sep = ',')
+R2<-t(R2)
+R3<- read.table('32_R1_b',sep = ',')
+R3<-t(R3)
+R4<- read.table('32_R2_b',sep = ',')
+R4<-t(R4)
+
+par(mfrow=c(2,2))
+plot(R1, xlab='Base Pair Position', ylab='Average Quality Score', main='Average Quality Score per Base Pair position of Read 1/n Library 29', pch=17,col='#c76a61',cex.main=0.7,ylim=c(0,41))
+plot(R2, xlab='Base Pair Position', ylab='Average Quality Score', main='Average Quality Score per Base Pair position of Read 2/n Library 29', pch=17,col='#c76a61',cex.main=0.7,ylim=c(0,41))
+plot(R3, xlab = 'Base Pair Position', ylab='Average Quality Score', main='Average Quality Score per Base Pair position of Read 1/n Library 32', pch=17,col='#c76a61',cex.main=0.7,ylim=c(0,41))
+plot(R4, xlab='Base Pair Position', ylab='Average Quality Score', main='Average Quality Score per Base Pair position of Read 2/n Library 32', pch=17,col='#c76a61',cex.main=0.7,ylim=c(0,41))
+
+```
+
+- My plots look pretty much the same as the plots that FastQC generated, which is encouraging that my program did what it was supposed to do. The same dips were reported in my graphs as can be seen in the FASTqc graphs.I think that it woudl be interesting to encourporate the error bar aspect into my graphs to see if those would also follow the same pattern. 
+
+
+###Part 2
+
+3. Comparing the trimming programs and reporting the results
+
+- cutadapt is a program that trims adapters, is N or other wildcard character tolerant, is capable of working on paired end reads, is also error tolerant for things such as indels or undetermined base calls. This program is written in Python 2.
+
+- Trimmomatic is program that also trims adapters and goes through a serious of steps for illumina adapter trimming. Requires a fastafile with adapters in it. It also can do palindrome or simple trimming. It appeared there was more manipulation of the data in order to use trimmomatic than I was willing to put into it when more simple options appeared to be available(such as cutadapt and process_shortreads). This program is written in Java
+
+- process_shortreads is a program that we have used before that has very easy command line options. It allows for paired end processing, and is capable of doing lots of different types of quality filtering if those options are chosen. It is part of stacks.
+
+*Cutadapt command is located in the cutadapt.sh
+
+- How many reads were actually trimmed?
+
+Library 29 
+```1357283/9654866```
+
+about 14% of the reads were trimmed
+
+Library 32 
+```762699/23640348```
+about 3% of the reads were trimmed 
+
+- Commands used to determine lengths of the sequences that were trimmed:
+
+
+```grep -A 1 "@" 29_R1.out.fastq| grep -v '^--'| awk '{print length($0)}' | sort -n | uniq -c > 29_R1_readlen.txt```
+
+```grep -A 1 "@" 29_R2.out.fastq| grep -v '^--'| awk '{print length($0)}' | sort -n | uniq -c > 29_R2_readlen.txt```
+
+```grep -A 1 "@" 32_R1.out.fastq| grep -v '^--'| awk '{print length($0)}' | sort -n | uniq -c > 32_R1_readlen.txt```
+
+```grep -A 1 "@" 32_R2.out.fastq| grep -v '^--'| awk '{print length($0)}' | sort -n | uniq -c > 32_R2_readlen.txt```
+
+4. Plotting read lengths
+
+
+```{r,echo=F}
+
+r1_table<-read.table('29_R1_readlen.txt')
+colnames(r1_table)<-c('occurence', 'length')
+r2_table<-read.table('29_R2_readlen.txt')
+colnames(r2_table)<-c('occurence', 'length')
+plot(r1_table$length, log10(r1_table$occurence), pch=8, ylab='Occurence of read length in file(log 10)',xlab='Length of Reads',main='Distribution of trimmed read lengths for Library 29', col='#a2d5d6')
+points(r2_table$length, log10(r2_table$occurence), pch=0, col='#6d8d35')
+legend(x='topleft',c('Read 1','Read 2'),pch = c(8,0),col=c('#a2d5d6','#6d8d35'),bty='n')
+
+
+
+
+```
+```{r,echo=F}
+
+r1_table<-read.table('32_R1_readlen.txt')
+colnames(r1_table)<-c('occurence', 'length')
+r2_table<-read.table('32_R2_readlen.txt')
+colnames(r2_table)<-c('occurence', 'length')
+plot(r1_table$length, log10(r1_table$occurence), pch=8, ylab='Occurence of read length in file(log 10)',xlab='Length of Reads',main='Distribution of trimmed read lengths for Library 32', col='#a2d5d6')
+points(r2_table$length, log10(r2_table$occurence), pch=0, col='#6d8d35')
+legend(x='topleft',c('Read 1','Read 2'),pch = c(8,0),col=c('#a2d5d6','#6d8d35'),bty='n')
+
+
+
+
+```
+ 
+5. The adapter trimming results are consistent for the libraries that I am looking at. For the 29 library, the average insert size was 419 bp and 14% of the reads were trimmed. For library 32, the average insert size was 420 bp and 3% of the read were trimmed. With insert sizes this large, we would expect to have a very low amount of adapter contamination, since the average insert library size is significantly longer than the sequence that the HiSeq is able to sequence. If there was a high level of adapter contamination, then someone likely went wrong with sequencing and the data would need to inspected more closely. 
+
+
+
+###Part 3 rRNA reads and strandedness
+
+6. rRNA reads were taken from rfam and searched for just Mus musculus hits. These were then fed into a single file, which was used to generate a gsnap database. That script is in `gmap_db.sh`. Alignment to the trimmed library sequences was then executed in the `gsnap.sh` script. For determining the proportion of contamination of rRNA, I decided to do the line count of the reads that did not map to any of the rRNA, calculate that percentage, and then subtract that from 100%. I chose this method because it seemed to have the least room for error, and I would be able to consider that any reads that were not included in this portion, mapped to an rRNA sequence in some capacity(i.e. half mapped). 
+
+- Command to determine proportition of contamination in library 29:
+
+```grep -v '@' 29_trimmed.nomapping  | wc -l  9153740```
+
+- About 5% of the reads were likely from rRNA, which is relatively good. 
+
+- Command to determine proportion of contamination in library 32:
+
+```grep -v '@' 32_trimmed.nomapping  | wc -l  23127191```
+
+- About 3% of the reads are from rRNA in this library. 
+
+7. I determined the strandedness by checking to see if there were equal proportions of polyA's, signifying the polyA tail, and polyT's which would be the complement to those poly T's. I chose 20 consecutive basesthat were anchored at the end of the sequences. This was not done for G's and C's. Below are my grep commands and the outcome:
+
+- 20 consecutive bases in library 29:
+
+
+```grep 'AAAAAAAAAAAAAAAAAAAA$' 29_4E_fox_S21_L008_R1_001.fastq | wc -l  241```
+
+```grep 'AAAAAAAAAAAAAAAAAAAA$' 29_4E_fox_S21_L008_R2_001.fastq | wc -l  1927```
+
+```grep 'TTTTTTTTTTTTTTTTTTTT$' 29_4E_fox_S21_L008_R1_001.fastq | wc -l  2058```
+
+```grep 'TTTTTTTTTTTTTTTTTTTT$' 29_4E_fox_S21_L008_R2_001.fastq | wc -l  415```
+
+
+- 20 consecutive bases in library 32:
+
+```grep 'AAAAAAAAAAAAAAAAAAAA$' 32_4G_both_S23_L008_R1_001.fastq | wc -l 675```
+
+```grep 'AAAAAAAAAAAAAAAAAAAA$' 32_4G_both_S23_L008_R2_001.fastq | wc -l  3315```
+
+```grep 'TTTTTTTTTTTTTTTTTTTT$' 32_4G_both_S23_L008_R1_001.fastq | wc -l  4879```
+
+```grep 'TTTTTTTTTTTTTTTTTTTT$' 32_4G_both_S23_L008_R2_001.fastq | wc -l  1391```
+
+
+Graphical representation of proportions of reads:
+
+```{r, echo=F,message=FALSE}
+
+counts<-c(241/2058,1927/415)
+counts_df<-as.data.frame(counts)
+counts_df$As<-c(241,1927)
+counts_df$Ts<-c(2058,415)
+row.names(counts_df)<-c('R1','R2')
+colnames(counts_df)<-c('Proportion', 'Count of polyAs', 'Count of polyTs')
+counts_32<-c(675/4879,3315/1391)
+counts_32_df<-as.data.frame(counts_32)
+counts_32_df$read<-c(675,3315)
+counts_32_df$wc<-c(4879,1391)
+row.names(counts_32_df)<-c('R1','R2')
+colnames(counts_32_df)<-c('Proportion', 'Count of polyAs', 'Count of polyTs')
+cols<-c('#be5e35','#668e43')
+par(mfrow=c(1,2))
+plot(counts, xaxt='n', col=cols, ylab='Proportion of base complements',main='Library 29 proportion of A to T',pch=16)
+axis(1,at=1:2, label=c('R1(A/T)','R2(A/T)'))
+plot(counts_32, xaxt='n', col=cols, ylab='Percentage of base complements',main='Library 32 proportion of A to T\n present',pch=16)
+axis(1,at=1:2, label=c('R1(A/T)','R2(A/T)'))
+
+```
+
+Numeric representation of the proportions of reads:
+```{r, echo=F, message=FALSE}
+library(knitr)
+kable(counts_df,caption = 'Library 29')
+kable(counts_32_df, caption='Library 32')
+```
+
+- As we can see in both the table and the graphical representation, these libraries are stranded. The evidence for this is that there is a higher proportion of A's in one read, signifiying the polyA tail of the mRNA we are looking at, and a higher proportion of T's in the reverse read. If these values were equal in both read 1 and read 2, then they would likely not be stranded due to equal sequencing of both the desired and the complementary strand.  
+
+
+
+
+
+
